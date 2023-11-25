@@ -4,12 +4,12 @@
 #include <SFML/Audio.hpp>
 #include <random>
 #include <time.h>
-#include <vector>
+#include <ctime>
 #include "tetromino.cpp"
 
 using namespace sf;
 
-std::vector<Tetromino*> tetrominoes;
+float const delay_const{ 0.001 };
 
 ////////// GAME /////////////
 
@@ -22,7 +22,7 @@ private:
 	Clock clock;
 	float time;
 	float timer{ 0 };
-	float delay{ 0.0007 };
+	float delay = delay_const;
 
 	void initVariables() {
 		window = nullptr;
@@ -34,6 +34,7 @@ private:
 		videoMode.height = 720;
 		videoMode.width = 1080;
 		window = new RenderWindow(videoMode, "Tetromino");
+		window->setVerticalSyncEnabled(true);
 	}
 public:
 	Game();
@@ -46,18 +47,18 @@ public:
 	void render();
 
 	Tetromino *tt;
-	Tetromino* tt_mem;
 };
 
 Game::Game() {
+	srand(std::time(0));
 	initVariables();
 	initWindow();
-	tt = new Tetromino(rand()%7, rand() % 7);
-	Tetromino* tt_mem = tt;
-	tetrominoes.push_back(tt);
+	tt = new Tetromino(rand() % 8, rand() % 7);
 };
 
 Game::~Game() { delete tt; delete window; }
+
+bool down_pressed = false;
 
 void Game::pollEvents() {
 	while (window->pollEvent(ev))
@@ -70,7 +71,11 @@ void Game::pollEvents() {
 			if (ev.key.code == Keyboard::Escape) window->close();
 			else if (ev.key.code == Keyboard::Left) { tt->move(-1); }
 			else if (ev.key.code == Keyboard::Right) { tt->move(1); }
-			else if (ev.key.code == Keyboard::Up) { tt->rotate(); };
+			else if (ev.key.code == Keyboard::Up) { tt->rotate(); }
+			else if (ev.key.code == Keyboard::Down) { down_pressed = true; delay = delay_const / 3; }
+			break;
+		case Event::KeyReleased:
+			if (ev.key.code == Keyboard::Down and down_pressed) { delay = delay_const; }
 			break;
 		}
 	}
@@ -79,17 +84,20 @@ void Game::pollEvents() {
 void Game::update() {
 	pollEvents();
 	timer += time;
-	timer = tt->move(timer, delay);
+
+	if (timer > delay) 
+		timer = tt->move(timer, delay);
 	
 };
 
 void Game::render() {
 	window->clear(Color::Black);
 
-	tt_mem->draw(*window);
+	tt->draw(*window);
 
 	if (tt->timeToDie) { 
-		tt = new Tetromino(rand() % 7, rand() % 7);
+		delete tt;
+		tt = new Tetromino(rand()%8, rand() % 7);
 	}
 
 	window->display();

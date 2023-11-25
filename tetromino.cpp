@@ -48,6 +48,7 @@ public:
 
     int x{ 0 };
     int y{ 0 };
+    bool dead = false;
 };
 
 std::vector<Box*> boxes;
@@ -58,14 +59,15 @@ Box::Box(int x, int y, int color): x(x), y(y), color(color) {
 
 void Box::initTexture() {
     texture.loadFromFile("images/tiles32.png");
-    
+    pic.setTexture(texture);
+    pic.setTextureRect(IntRect(color * 32, 0, 32, 32));
 }
 
 void Box::draw(RenderTarget& window, int extX, int extY) {
-    pic.setTexture(texture);
-    pic.setTextureRect(IntRect(color*32, 0, 32, 32));
-    pic.setPosition(x*32, y*32);
-    window.draw(pic);
+    pic.setPosition(x * 32, y * 32);
+    //if (field[y][x]) {
+        window.draw(pic);
+    //}
 }
 
 int Box::atBordersCheck() {
@@ -96,7 +98,7 @@ bool Box::atBottomCheck(bool collusionCheck) {
 
 class Tetromino {
 private:
-    int x{ 5 };
+    int x{ 4 };
     int y{ 0 };
     int num{ 0 };
     Box *data[4];
@@ -106,12 +108,11 @@ private:
 public:
     Tetromino() {};
     Tetromino(int color, int num);
-    ~Tetromino() {};
+    ~Tetromino() { for (int i = 0; i < 4; i++) { data[i]->dead = true; } };
 
     void move(const int dirX);
     float move(float time, const float delay);
     int vnePolya();
-    Box* lowestCheck();
 
     void rotate();
     void draw(RenderTarget& window);
@@ -125,6 +126,44 @@ void mapUpdate() {
     for (int i = 0; i < boxes.size(); i++) {
         field[boxes[i]->y][boxes[i]->x] = 1;
     }
+    int k = HEIGHT - 1;
+    int lines = 0;
+    int lines_num[4];
+    for (int i = k; i > 0; i--) { 
+        int count = 0;
+
+        // updating the field when the lines are cleared
+
+        for (int j = 0; j < LENGTH; j++) {
+            if (field[i][j]) count++;
+            field[k][j] = field[i][j];
+        }
+        if (count < LENGTH) k--;
+
+        //deleting the boxes when the lines are cleared
+
+        else {
+            lines_num[lines] = i;
+            lines++;
+            for (int p = boxes.size() - 1; p >= 0; p--) {
+                if (boxes[p]->y == i) {
+                    delete boxes[p];
+                    boxes.erase(boxes.begin() + p);
+                }
+            }
+        }
+    }
+
+    // pushing the rest of them down
+
+    for (int j = lines-1; j >= 0; j--) {
+        for (int p = 0; p < boxes.size(); p++) {
+            if (boxes[p]->y <= lines_num[j]) {
+                boxes[p]->y += 1;
+            }
+        }
+    }
+
 }
 
 Tetromino::Tetromino(int color, int num) : num(num) {
@@ -132,7 +171,7 @@ Tetromino::Tetromino(int color, int num) : num(num) {
         int x_temp = shapes[num][i] % 2 + x;
         int y_temp = shapes[num][i] / 2 + y;
         a[i].x = x_temp; a[i].y = y_temp;
-        data[i] = new Box(x_temp, y_temp, color);
+        data[i] = new Box(x_temp, y_temp, num);
         boxes.push_back(data[i]);
     }
 };
@@ -140,7 +179,6 @@ Tetromino::Tetromino(int color, int num) : num(num) {
 void Tetromino::draw(RenderTarget& window) {
     for (int i = 0; i < boxes.size(); i++) {
         boxes[i]->draw(window, 0, 0);
-        
     }
 
 };
@@ -163,22 +201,19 @@ float Tetromino::move(float timer, const float delay) {
     bool atBottom = false; //Checking if every box at bottom
     
      //if we're in air we move lower
-    if (timer > delay) {
+    for (int i = 0; i < 4; i++) {
+        if (data[i]->atBottomCheck()) { atBottom = true; timeToDie = true; }
+    }
+    if (!atBottom) {
         for (int i = 0; i < 4; i++) {
-            if (data[i]->atBottomCheck()) { atBottom = true; timeToDie = true; }
-        }
-        if (!atBottom) {
-            for (int i = 0; i < 4; i++) {
                 
-                data[i]->y += 1;
-                a[i].y += 1;
-            }
-            timer = 0;
+            data[i]->y += 1;
+            a[i].y += 1;
         }
-        if (atBottom) {
-            mapUpdate();
-        }
-
+        timer = 0;
+    }
+    if (atBottom) {
+        mapUpdate();
     }
 
     return timer;
@@ -194,9 +229,7 @@ void Tetromino::rotate() {
         rotateNum += 1;
         for (int i = 0; i < 4; i++) { b[i].x = 0; b[i].y = 0; }
         for (int i = 0; i < 4; i++) {
-            //if (data[i]->atBottomCheck(true)) {
             b[i] = a[i];
-            //}
             int x1 = data[i]->y - cy;
             int y1 = data[i]->x - cx;
             data[i]->x = cx - x1;
@@ -246,7 +279,6 @@ void Tetromino::rotate() {
                 break;
             }
         }
-        
     }
 }
 
@@ -257,6 +289,5 @@ int Tetromino::vnePolya() {
     }
     return 0;
 }
-
 
 ////////// ADDITIONAL FUNCTIONS ///////////
