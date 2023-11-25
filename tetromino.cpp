@@ -35,6 +35,7 @@ private:
     Texture texture;
     int atBorders;
     bool lowest = false;
+
 public:
     Box() {};
     Box(int x, int y, int color);
@@ -52,6 +53,7 @@ public:
 };
 
 std::vector<Box*> boxes;
+std::vector<Box*> frozen_boxes;
 
 Box::Box(int x, int y, int color): x(x), y(y), color(color) {
     initTexture();
@@ -64,10 +66,8 @@ void Box::initTexture() {
 }
 
 void Box::draw(RenderTarget& window, int extX, int extY) {
-    pic.setPosition(x * 32, y * 32);
-    //if (field[y][x]) {
-        window.draw(pic);
-    //}
+    pic.setPosition(extX + x * 32, extY + y * 32);
+    window.draw(pic);
 }
 
 int Box::atBordersCheck() {
@@ -104,11 +104,18 @@ private:
     Box *data[4];
     bool moveableRN = true;
     int rotateNum = 0;
+    int lines_sum = 0;
+
+    int extX{ 40 };
+    int extY{ 40 };
 
 public:
     Tetromino() {};
     Tetromino(int color, int num);
-    ~Tetromino() { for (int i = 0; i < 4; i++) { data[i]->dead = true; } };
+    Tetromino(int color, int num, int extX, int extY);
+    ~Tetromino() { for (int i = 0; i < 4; i++) { data[i]->dead = true;
+    frozen_boxes.clear();
+    } }
 
     void move(const int dirX);
     float move(float time, const float delay);
@@ -116,12 +123,16 @@ public:
 
     void rotate();
     void draw(RenderTarget& window);
+    void mapUpdate();
+
+    int getNum() { return num; }
 
     bool timeToDie = false;
+    bool moveableAtAll = true;
 
 };
 
-void mapUpdate() {
+void Tetromino::mapUpdate() {
     field[HEIGHT][LENGTH] = { 0 };
     for (int i = 0; i < boxes.size(); i++) {
         field[boxes[i]->y][boxes[i]->x] = 1;
@@ -163,7 +174,6 @@ void mapUpdate() {
             }
         }
     }
-
 }
 
 Tetromino::Tetromino(int color, int num) : num(num) {
@@ -174,11 +184,30 @@ Tetromino::Tetromino(int color, int num) : num(num) {
         data[i] = new Box(x_temp, y_temp, num);
         boxes.push_back(data[i]);
     }
-};
+}
+
+Tetromino::Tetromino(int color, int num, int EextX, int EextY) : num(num) {
+    extX = EextX - x * 32, extY = EextY - y * 32; 
+    moveableAtAll = false;
+    for (int i = 0; i < 4; i++) {
+        int x_temp = shapes[num][i] % 2 + x;
+        int y_temp = shapes[num][i] / 2 + y;
+        a[i].x = x_temp; a[i].y = y_temp;
+        data[i] = new Box(x_temp, y_temp, num);
+        frozen_boxes.push_back(data[i]);
+    }
+}
 
 void Tetromino::draw(RenderTarget& window) {
-    for (int i = 0; i < boxes.size(); i++) {
-        boxes[i]->draw(window, 0, 0);
+    if (moveableAtAll) {
+        for (int i = 0; i < boxes.size(); i++) {
+            boxes[i]->draw(window, extX, extY);
+        }
+    }
+    else {
+        for (int i = 0; i < frozen_boxes.size(); i++) {
+            frozen_boxes[i]->draw(window, extX, extY);
+        }
     }
 
 };
@@ -199,14 +228,13 @@ void Tetromino::move(const int dirX) {
 
 float Tetromino::move(float timer, const float delay) {
     bool atBottom = false; //Checking if every box at bottom
-    
-     //if we're in air we move lower
+
+        //if we're in air we move lower
     for (int i = 0; i < 4; i++) {
         if (data[i]->atBottomCheck()) { atBottom = true; timeToDie = true; }
     }
     if (!atBottom) {
         for (int i = 0; i < 4; i++) {
-                
             data[i]->y += 1;
             a[i].y += 1;
         }
@@ -215,8 +243,9 @@ float Tetromino::move(float timer, const float delay) {
     if (atBottom) {
         mapUpdate();
     }
-
+    
     return timer;
+
 }
 
 void Tetromino::rotate() {

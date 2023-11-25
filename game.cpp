@@ -9,7 +9,7 @@
 
 using namespace sf;
 
-float const delay_const{ 0.001 };
+float const delay_const{ 5 };
 
 ////////// GAME /////////////
 
@@ -24,6 +24,9 @@ private:
 	float timer{ 0 };
 	float delay = delay_const;
 
+	Texture texture[2];
+	Sprite pic[2];
+
 	void initVariables() {
 		window = nullptr;
 		time = clock.getElapsedTime().asSeconds();
@@ -36,6 +39,20 @@ private:
 		window = new RenderWindow(videoMode, "Tetromino");
 		window->setVerticalSyncEnabled(true);
 	}
+
+	void initTextures() {
+		texture[0].loadFromFile("images/background.png");
+		texture[1].loadFromFile("images/tiles_4x4.png");
+	}
+
+	void initSprites() {
+		pic[0].setTexture(texture[0]);
+		pic[0].setPosition(40,40);
+		pic[1].setTexture(texture[1]);
+		pic[1].setPosition(400, 40);
+		
+	}
+
 public:
 	Game();
 	virtual ~Game();
@@ -47,13 +64,17 @@ public:
 	void render();
 
 	Tetromino *tt;
+	Tetromino* tt_next;
 };
 
 Game::Game() {
 	srand(std::time(0));
 	initVariables();
 	initWindow();
+	initTextures();
+	initSprites();
 	tt = new Tetromino(rand() % 8, rand() % 7);
+	tt_next = new Tetromino(rand() % 8, rand() % 7, 432, 40);
 };
 
 Game::~Game() { delete tt; delete window; }
@@ -92,12 +113,16 @@ void Game::update() {
 
 void Game::render() {
 	window->clear(Color::Black);
-
+	window->draw(pic[0]);
+	window->draw(pic[1]);
 	tt->draw(*window);
+	tt_next->draw(*window);
 
 	if (tt->timeToDie) { 
 		delete tt;
-		tt = new Tetromino(rand()%8, rand() % 7);
+		tt = new Tetromino(tt_next->getNum(), tt_next->getNum());
+		delete tt_next;
+		tt_next = new Tetromino(1, rand()%7, 432, 40);
 	}
 
 	window->display();
