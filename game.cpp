@@ -9,7 +9,7 @@
 
 using namespace sf;
 
-float const delay_const{ 5 };
+float const delay_const{ 10 };
 
 ////////// GAME /////////////
 
@@ -80,8 +80,12 @@ Game::Game() {
 Game::~Game() { delete tt; delete window; }
 
 bool down_pressed = false;
+float global_lines = 0;
 
 void Game::pollEvents() {
+	float lines = GetClearedLines();
+	if (lines != global_lines) { global_lines = lines;
+	delay = delay_const / (0.2 * lines + 1); }
 	while (window->pollEvent(ev))
 	{
 		switch (ev.type) {
@@ -93,10 +97,11 @@ void Game::pollEvents() {
 			else if (ev.key.code == Keyboard::Left) { tt->move(-1); }
 			else if (ev.key.code == Keyboard::Right) { tt->move(1); }
 			else if (ev.key.code == Keyboard::Up) { tt->rotate(); }
-			else if (ev.key.code == Keyboard::Down) { down_pressed = true; delay = delay_const / 3; }
+			else if (ev.key.code == Keyboard::Down) { delay = delay_const / 4 /(0.2*lines+1); }
 			break;
 		case Event::KeyReleased:
-			if (ev.key.code == Keyboard::Down and down_pressed) { delay = delay_const; }
+			delay = delay_const / (0.2 * lines + 1);
+			if (ev.key.code == Keyboard::Down) {   }
 			break;
 		}
 	}
@@ -108,17 +113,16 @@ void Game::update() {
 
 	if (timer > delay) 
 		timer = tt->move(timer, delay);
-	
 };
 
 void Game::render() {
 	window->clear(Color::Black);
 	window->draw(pic[0]);
 	window->draw(pic[1]);
-	tt->draw(*window);
 	tt_next->draw(*window);
+	tt->draw(*window);
 
-	if (tt->timeToDie) { 
+	if (tt->timeToDie) {
 		delete tt;
 		tt = new Tetromino(tt_next->getNum(), tt_next->getNum());
 		delete tt_next;
