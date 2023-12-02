@@ -3,7 +3,6 @@
 
 using namespace sf;
 
-//test
 int main()
 {
     Game game;

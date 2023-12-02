@@ -26,6 +26,8 @@ struct Point {
     int x, y;
 } a[4], b[4];
 
+int clearedLines{0};
+
 ///////// BOX //////////
 
 class Box {
@@ -109,6 +111,9 @@ private:
     int extX{ 40 };
     int extY{ 40 };
 
+    SoundBuffer sb[4];
+    Sound sound[4];
+
 public:
     Tetromino() {};
     Tetromino(int color, int num);
@@ -116,6 +121,7 @@ public:
     ~Tetromino() { for (int i = 0; i < 4; i++) { data[i]->dead = true;
     frozen_boxes.clear();
     } }
+    void initSB();
 
     void move(const int dirX);
     float move(float time, const float delay);
@@ -131,6 +137,15 @@ public:
     bool moveableAtAll = true;
 
 };
+
+void Tetromino::initSB() {
+    sb[0].loadFromFile("sounds/cleared_line.wav");
+    sound[0].setBuffer(sb[0]);
+    sb[1].loadFromFile("sounds/down.wav");
+    sound[1].setBuffer(sb[1]);
+    sb[2].loadFromFile("sounds/rotate.wav");
+    sound[2].setBuffer(sb[2]);
+}
 
 void Tetromino::mapUpdate() {
     field[HEIGHT][LENGTH] = { 0 };
@@ -156,6 +171,7 @@ void Tetromino::mapUpdate() {
         else {
             lines_num[lines] = i;
             lines++;
+            clearedLines++;
             for (int p = boxes.size() - 1; p >= 0; p--) {
                 if (boxes[p]->y == i) {
                     delete boxes[p];
@@ -177,6 +193,7 @@ void Tetromino::mapUpdate() {
 }
 
 Tetromino::Tetromino(int color, int num) : num(num) {
+    initSB();
     for (int i = 0; i < 4; i++) {
         int x_temp = shapes[num][i] % 2 + x;
         int y_temp = shapes[num][i] / 2 + y;
@@ -192,7 +209,6 @@ Tetromino::Tetromino(int color, int num, int EextX, int EextY) : num(num) {
     for (int i = 0; i < 4; i++) {
         int x_temp = shapes[num][i] % 2 + x;
         int y_temp = shapes[num][i] / 2 + y;
-        a[i].x = x_temp; a[i].y = y_temp;
         data[i] = new Box(x_temp, y_temp, num);
         frozen_boxes.push_back(data[i]);
     }
@@ -219,7 +235,7 @@ void Tetromino::move(const int dirX) {
         else if (data[i]->atBordersCheck() == 1 and dirX == 1) moveableRN = false; //right
     };
     if (moveableRN) {
-        for (int i = 0; i < 4; i++) { 
+        for (int i = 0; i < 4; i++) {
             data[i]->x += dirX; 
             a[i].x += dirX;
         }
@@ -234,21 +250,26 @@ float Tetromino::move(float timer, const float delay) {
         if (data[i]->atBottomCheck()) { atBottom = true; timeToDie = true; }
     }
     if (!atBottom) {
+        sound[1].play();
         for (int i = 0; i < 4; i++) {
             data[i]->y += 1;
             a[i].y += 1;
         }
         timer = 0;
-    }
-    if (atBottom) {
-        mapUpdate();
+    //если поместить звук сюда, то играет
     }
     
+    else {
+        sound[0].play(); //если помещаем звук в else, то он не играет
+        mapUpdate(); //этот else отвечает за попадание фигурки вниз
+    }
+    
+    
     return timer;
-
 }
 
 void Tetromino::rotate() {
+    sound[2].play();
     if (num != 6) {
         int cx = data[1]->x;
         int cy = data[1]->y;
@@ -320,3 +341,7 @@ int Tetromino::vnePolya() {
 }
 
 ////////// ADDITIONAL FUNCTIONS ///////////
+
+int GetClearedLines() {
+    return clearedLines;
+}
